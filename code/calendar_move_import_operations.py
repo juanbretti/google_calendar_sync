@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# https://console.cloud.google.com/apis/api/calendar-json.googleapis.com/quotas?authuser=1&project=skilful-charmer-357720
-# https://github.com/googleapis/google-api-python-client/tree/main/samples/calendar_api
-# https://developers.google.com/calendar/api/v3/reference/events
-
 from oauth2client import client
 from googleapiclient import sample_tools
 import sys
