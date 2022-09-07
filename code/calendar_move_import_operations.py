@@ -15,6 +15,8 @@ import re
 
 import personal
 
+EVENTS = ['moved', 'imported', 'reimported', 'reimported_merged']
+
 def calendar_list(argv):
     # Authenticate and construct service.
     service, flags = sample_tools.init(
@@ -72,39 +74,70 @@ def events_backup(argv, file_name, calendar):
     text_file.close()
     print(f"Export complete of `{calendar}` on `{file_name_complete}`")
 
-# def event_description_remove_html_tags(raw_html):
-#     raw_html = re.sub('<br\s*?>', os.linesep, raw_html)
-#     # clean_text = BeautifulSoup(raw_html, "lxml").text
-#     clean_text = BeautifulSoup(raw_html, "html.parser").text
-#     clean_text = clean_text.splitlines()
-#     return clean_text
+def event_description_remove_html_tags(raw_html):
+    raw_html = re.sub('<br\s*?>', os.linesep, raw_html)
+    # clean_text = BeautifulSoup(raw_html, "lxml").text  # Runtime issues with "lxml"
+    clean_text = BeautifulSoup(raw_html, "html.parser").text
+    clean_text = clean_text.splitlines()
+    return clean_text
 
-# def event_description_text_diff(old, new):
-#     diff = difflib.ndiff(event_description_remove_html_tags(old), event_description_remove_html_tags(new))
-#     diff = '\n'.join(list(diff))
-#     return diff
+def event_description_text_diff(old, new):
+    diff = difflib.ndiff(event_description_remove_html_tags(old), event_description_remove_html_tags(new))
+    diff = '\n'.join(list(diff))
+    return diff
+
+def clean_previous(text, EVENTS=EVENTS, MIN_FOR_FIRST_SEARCH=200):
+    for event_ in EVENTS:
+        event_search = text.find(f"|{event_.upper()}|")
+        event_search_end = text.find(f"|/{event_.upper()}|") + len(event_) + 3  # 3: |+/+|, three symbols
+        second_search_diff = text.find("|DIFF|")
+        second_search_previously = text.find("|PREVIOUSLY|")
+
+        if (event_search > 0) and (event_search < MIN_FOR_FIRST_SEARCH):
+            if (second_search_diff < second_search_previously) and (second_search_diff > event_search):
+                text_clean = text[event_search_end:second_search_diff]
+                break
+            elif (second_search_previously < second_search_diff) and (second_search_previously > event_search):
+                text_clean = text[event_search_end:second_search_previously]
+                break
+            elif (second_search_previously == second_search_diff) and (second_search_previously == -1):
+                text_clean = text[event_search_end:]
+                break
+            else:
+                text_clean = text
+        else:
+            text_clean = text
+    
+    return text_clean
 
 def event_description_update(event, custom_flag, calendar_source, calendar_target, operation_timestamp, event_target=None):
+    watermark = {
+        'calendar_source': calendar_source,
+        'calendar_target': calendar_target,
+        'id_source': event['id'],
+        'updated_source': event['updated'],
+        'operation_timestamp': operation_timestamp,
+    }
+
     # Add `watermark` if there is any `recurringEventId`
     if 'recurringEventId' in event:
-        watermark_recurringEventId = f"recurringEventId: {str(event['recurringEventId'])}<br>"
-    else:
-        watermark_recurringEventId = ""
-
-    # Add `watermark`
-    watermark = f"|{custom_flag.upper()}|<br>calendar_source: {calendar_source}<br>calendar_target: {calendar_target}<br>id_source: {event['id']}<br>updated_source: {event['updated']}<br>operation_timestamp: {operation_timestamp}<br>{watermark_recurringEventId}|/{custom_flag.upper()}|"
-    if 'description' in event:
-        event['description'] = f"{watermark}<br><br><br>{str(event['description'])}"
-    else:
-        event['description'] = watermark
+        watermark.update({'recurringEventId': event['recurringEventId']})
 
     # To merge the `event_target` and the new `event_source` `description`
     if event_target:
-        event['description'] = f"{event['description']}<br><br><br>|PREVIOUSLY|<br>{event_target['description']}"
-        # event_target_old = event_target['description'].split("|/REIMPORTED|<br><br><br>")[1]
-        # event['description'] = event_description_text_diff(event_target_old, event['description'])
+        event_target_old = clean_previous(event_target['description'])
+        event_diff = event_description_text_diff(event_target_old, event['description'])
+        watermark_prev = f"<br><br>|DIFF|<br>{event_diff}<br>|/DIFF|<br><br>|PREVIOUSLY|<br>{event_target['description']}"
+    else:
+        watermark_prev = ""
 
-    return event['description']
+    #  Concatenate all key-values.
+    watermark_s = ""
+    for k,v in watermark.items():
+        watermark_s = f"{watermark_s}<br>{k}: {v}"
+    watermark_s = f"<html-blob>|{custom_flag.upper()}|{watermark_s}<br>|/{custom_flag.upper()}|<br>{event['description']}{watermark_prev}</html-blob>"
+
+    return watermark_s
 
 def event_attendees_update(event, calendar_target):
     # Add `attendee` to be able to import
@@ -150,7 +183,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
         events = service.events().list(calendarId=calendar_source, pageToken=page_token).execute()
         for events_counter, event in enumerate(events['items']):
             operation_timestamp = datetime.utcnow().isoformat() + 'Z'
-            events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'].isin(['moved', 'imported', 'reimported', 'reimported_merged']))].sort_values(by='operation_timestamp', ascending=False).head(1)
+            events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'].isin(EVENTS))].sort_values(by='operation_timestamp', ascending=False).head(1)
 
             if events_df_filtered.shape[0] == 0:
                 # Strange events missing `summary` or `start`

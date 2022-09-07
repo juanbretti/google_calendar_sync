@@ -6,3 +6,5 @@ code/personal.py
 .history/
 data/
 backup/
+test/
+**/__pycache__
