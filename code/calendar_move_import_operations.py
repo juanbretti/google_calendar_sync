@@ -19,8 +19,8 @@ EVENTS = ['moved', 'imported', 'reimported', 'reimported_merged']
 PREVIOUS = 'PREVIOUS'
 DIFF = 'DIFF'
 MIN_FOR_FIRST_SEARCH = 200
-TIME_RANGE = ['2022-08-21T00:00:00Z', '2022-08-24T00:00:00Z']
-UPDATED_MIN = '2022-09-10T00:00:00Z'
+TIME_RANGE = ['2022-08-01T00:00:00Z', '2022-08-31T00:00:00Z']
+# UPDATED_MIN = '2022-09-10T00:00:00Z'
 
 def calendar_list(argv):
     # Authenticate and construct service.
@@ -49,7 +49,7 @@ def calendar_list(argv):
             "the application to re-authorize."
         )
 
-def events_backup(argv, file_name, calendar):
+def events_backup(argv, file_name, calendar, show_deleted=True):
     # Authenticate and construct service.
     service, flags = sample_tools.init(
         argv,
@@ -67,7 +67,7 @@ def events_backup(argv, file_name, calendar):
     events_counter = 0
 
     while True:
-        events = service.events().list(calendarId=calendar, pageToken=page_token).execute()
+        events = service.events().list(calendarId=calendar, pageToken=page_token, showDeleted=show_deleted).execute()
         for event in events['items']:
             events_concatenate.update({"Event_" + str(events_counter): event}) 
             events_counter += 1
@@ -158,10 +158,10 @@ def event_attendees_update(event, calendar_target, calendar_target_name=personal
     
     return event['attendees']
 
-def event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_case, events_counter, event_target_updated = None):
+def event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_case, events_counter, events_counter_global, event_target_updated = None):
     event_log = pd.DataFrame({'calendar_source': calendar_source, 'id_source': event['id'], 'updated_source': event['updated'], 'updated_target': event_target_updated, 'calendar_target': calendar_target, 'operation_timestamp': operation_timestamp, 'inserted_target': event_type, 'execution_timestamp': execution_timestamp}, index=[0])
     events_counter_case += 1
-    print_statement = f"{event_type}: {event['id']}. events_counter: {events_counter + 1}"
+    print_statement = f"{event_type}: {event['id']}. events_counter: {events_counter + 1}. events_counter_global: {events_counter_global}."
     print(print_statement)
 
     return event_log, events_counter_case, print_statement
@@ -186,7 +186,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
         print('Creating `csv`')
     
     page_token = None
-    events_counter_imported = events_counter_moved = events_counter_missing = events_counter_already = events_counter_reimported = events_counter_reimported_merged = 0
+    events_counter_imported = events_counter_moved = events_counter_missing = events_counter_already = events_counter_reimported = events_counter_reimported_merged = events_counter_global = 0
 
     while True:
 
@@ -202,6 +202,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
             events = service.events().list(calendarId=calendar_source, pageToken=page_token).execute()
 
         for events_counter, event in enumerate(events['items']):
+            events_counter_global += 1
             operation_timestamp = datetime.utcnow().isoformat() + 'Z'
             events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'].isin(EVENTS))].sort_values(by='operation_timestamp', ascending=False).head(1)
 
@@ -210,7 +211,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
                 if not set(['summary', 'start']).issubset(event):
                     event_type = 'missing'
                     # Log
-                    event_log, events_counter_missing, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_missing, events_counter)
+                    event_log, events_counter_missing, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_missing, events_counter, events_counter_global)
 
                 # Fresh `move` or `import`
                 else:
@@ -223,7 +224,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
                         updated_event = service.events().update(calendarId=calendar_source, eventId=event['id'], body=event).execute()
                         updated_event = service.events().move(calendarId=calendar_source, eventId=event['id'], destination=calendar_target, sendUpdates='none').execute()
                         # Log
-                        event_log, events_counter_moved, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_moved, events_counter)
+                        event_log, events_counter_moved, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_moved, events_counter, events_counter_global)
 
                     # Import
                     else:
@@ -236,7 +237,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
                         event_add = service.events().import_(calendarId=calendar_target, body=event).execute()
                         event_target = service.events().get(calendarId=calendar_target, eventId=event['id']).execute()
                         # Log
-                        event_log, events_counter_imported, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_imported, events_counter, event_target['updated'])
+                        event_log, events_counter_imported, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_imported, events_counter, events_counter_global, event_target_updated=event_target['updated'])
 
             # `Reimport` or `sync`
             elif (events_df_filtered.shape[0]>0):
@@ -263,11 +264,11 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
 
                 # Log
                 if event_type == 'reimported':
-                    event_log, events_counter_reimported, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_reimported, events_counter, event_target['updated'])
+                    event_log, events_counter_reimported, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_reimported, events_counter, events_counter_global, event_target_updated=event_target['updated'])
                 elif event_type == 'reimported_merged':
-                    event_log, events_counter_reimported_merged, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_reimported_merged, events_counter, event_target['updated'])
+                    event_log, events_counter_reimported_merged, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_reimported_merged, events_counter, events_counter_global, event_target_updated=event_target['updated'])
                 elif event_type == 'already':
-                    event_log, events_counter_already, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_already, events_counter)
+                    event_log, events_counter_already, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_already, events_counter, events_counter_global)
 
             else:
                 print('Exception 1')
@@ -275,7 +276,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
 
             # Write log
             events_df = pd.concat([events_df, event_log], ignore_index=True)
-            events_df.to_csv(calendar_source_target_path, index=False)
+            event_log[events_df.columns].to_csv(calendar_source_target_path, index=False, mode='a', header=not os.path.exists(calendar_source_target_path))  # Resort columns, later export with `mode='a'` (append) https://stackoverflow.com/a/17975690/3780957
 
         page_token = events.get('nextPageToken')
         if not page_token:
@@ -285,16 +286,18 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
     events_df.to_csv(calendar_source_target_path, index=False)
 
     print(f"Copy complete from `{calendar_source}` to `{calendar_target}`")
-    print(f"events_counter {events_counter+1}, moved {events_counter_moved}, imported {events_counter_imported}, reimported {events_counter_reimported}, reimported_merged {events_counter_reimported_merged}, missing {events_counter_missing}, already {events_counter_already}")
+    print(f"events_counter_global {events_counter_global}, events_counter {events_counter+1}, moved {events_counter_moved}, imported {events_counter_imported}, reimported {events_counter_reimported}, reimported_merged {events_counter_reimported_merged}, missing {events_counter_missing}, already {events_counter_already}")
 
 if __name__ == "__main__":
     execution_timestamp = datetime.utcnow().isoformat() + 'Z'
 
     # calendar_list(sys.argv)
-    events_backup(sys.argv, "events_backup_source_gw", personal.CALENDAR_SOURCE)
-    events_backup(sys.argv, "events_backup_target_gw", personal.CALENDAR_TARGET)
+    events_backup(sys.argv, "events_backup_source_jbg", personal.CALENDAR_SOURCE)
+    events_backup(sys.argv, "events_backup_target_jb", personal.CALENDAR_TARGET)
+    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE, updated_min=UPDATED_MIN)
+    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=UPDATED_MIN)
     # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE)
-    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=UPDATED_MIN)
+    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp)
 
     pass
 
