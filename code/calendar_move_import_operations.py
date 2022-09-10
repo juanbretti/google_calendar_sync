@@ -16,6 +16,9 @@ import re
 import personal
 
 EVENTS = ['moved', 'imported', 'reimported', 'reimported_merged']
+PREVIOUS = 'PREVIOUS'
+DIFF = 'DIFF'
+MIN_FOR_FIRST_SEARCH = 200
 
 def calendar_list(argv):
     # Authenticate and construct service.
@@ -86,21 +89,21 @@ def event_description_text_diff(old, new):
     diff = '\n'.join(list(diff))
     return diff
 
-def clean_previous(text, EVENTS=EVENTS, MIN_FOR_FIRST_SEARCH=200):
-    for event_ in EVENTS:
+def clean_previous(text, events=EVENTS, previous=PREVIOUS, diff=DIFF, min_for_first_search=MIN_FOR_FIRST_SEARCH):
+    for event_ in events:
         event_search = text.find(f"|{event_.upper()}|")
         event_search_end = text.find(f"|/{event_.upper()}|") + len(event_) + 3  # 3: |+/+|, three symbols
-        second_search_diff = text.find("|DIFF|")
-        second_search_previously = text.find("|PREVIOUSLY|")
+        second_search_diff = text.find(f"|{diff}|")
+        second_search_previous = text.find(f"|{previous}|")
 
-        if (event_search > 0) and (event_search < MIN_FOR_FIRST_SEARCH):
-            if (second_search_diff < second_search_previously) and (second_search_diff > event_search):
+        if (event_search > 0) and (event_search < min_for_first_search):
+            if (second_search_diff < second_search_previous) and (second_search_diff > event_search):
                 text_clean = text[event_search_end:second_search_diff]
                 break
-            elif (second_search_previously < second_search_diff) and (second_search_previously > event_search):
-                text_clean = text[event_search_end:second_search_previously]
+            elif (second_search_previous < second_search_diff) and (second_search_previous > event_search):
+                text_clean = text[event_search_end:second_search_previous]
                 break
-            elif (second_search_previously == second_search_diff) and (second_search_previously == -1):
+            elif (second_search_previous == second_search_diff) and (second_search_previous == -1):
                 text_clean = text[event_search_end:]
                 break
             else:
@@ -110,7 +113,7 @@ def clean_previous(text, EVENTS=EVENTS, MIN_FOR_FIRST_SEARCH=200):
     
     return text_clean
 
-def event_description_update(event, custom_flag, calendar_source, calendar_target, operation_timestamp, event_target=None):
+def event_description_update(event, custom_flag, calendar_source, calendar_target, operation_timestamp, event_target=None, previous=PREVIOUS, diff=DIFF):
     watermark = {
         'calendar_source': calendar_source,
         'calendar_target': calendar_target,
@@ -127,7 +130,7 @@ def event_description_update(event, custom_flag, calendar_source, calendar_targe
     if event_target:
         event_target_old = clean_previous(event_target['description'])
         event_diff = event_description_text_diff(event_target_old, event['description'])
-        watermark_prev = f"<br><br>|DIFF|<br>{event_diff}<br>|/DIFF|<br><br>|PREVIOUSLY|<br>{event_target['description']}"
+        watermark_prev = f"<br><br>|{diff}|<br>{event_diff}<br>|/{diff}|<br><br>|{previous}|<br>{event_target['description']}"
     else:
         watermark_prev = ""
 
@@ -135,13 +138,13 @@ def event_description_update(event, custom_flag, calendar_source, calendar_targe
     watermark_s = ""
     for k,v in watermark.items():
         watermark_s = f"{watermark_s}<br>{k}: {v}"
-    watermark_s = f"<html-blob>|{custom_flag.upper()}|{watermark_s}<br>|/{custom_flag.upper()}|<br>{event['description']}{watermark_prev}</html-blob>"
+    watermark_s = f"<html-blob>|{custom_flag.upper()}|{watermark_s}<br>|/{custom_flag.upper()}|<br><br>{event['description']}{watermark_prev}</html-blob>"
 
     return watermark_s
 
-def event_attendees_update(event, calendar_target):
+def event_attendees_update(event, calendar_target, calendar_target_name=personal.CALENDAR_TARGET_NAME):
     # Add `attendee` to be able to import
-    self_attendee = {"email": calendar_target, "displayName": "Juan Pedro Bretti Mandarano (calendar_target)", "self": True, "responseStatus": "accepted"}
+    self_attendee = {"email": calendar_target, "displayName": calendar_target_name, "self": True, "responseStatus": "accepted"}
     if 'attendees' in event:
         event['attendees'].append(self_attendee)
     else:

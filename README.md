@@ -7,6 +7,7 @@ Additionally create a file `\code\personal.py`, containing:
 ```python
 CALENDAR_SOURCE = 'calendar_a@gmail.com'
 CALENDAR_TARGET = 'calendar_b@gmail.com'
+CALENDAR_TARGET_NAME = 'Your name'
 PATH_DATA = "data"
 ```
 
