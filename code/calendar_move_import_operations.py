@@ -19,6 +19,8 @@ EVENTS = ['moved', 'imported', 'reimported', 'reimported_merged']
 PREVIOUS = 'PREVIOUS'
 DIFF = 'DIFF'
 MIN_FOR_FIRST_SEARCH = 200
+TIME_RANGE = ['2022-08-21T00:00:00Z', '2022-08-24T00:00:00Z']
+UPDATED_MIN = '2022-09-10T00:00:00Z'
 
 def calendar_list(argv):
     # Authenticate and construct service.
@@ -126,6 +128,10 @@ def event_description_update(event, custom_flag, calendar_source, calendar_targe
     if 'recurringEventId' in event:
         watermark.update({'recurringEventId': event['recurringEventId']})
 
+    # Create empty description
+    if 'description' not in event:
+        event['description'] = ""
+
     # To merge the `event_target` and the new `event_source` `description`
     if event_target:
         event_target_old = clean_previous(event_target['description'])
@@ -160,7 +166,7 @@ def event_df_log(calendar_source, event, calendar_target, operation_timestamp, e
 
     return event_log, events_counter_case, print_statement
 
-def events_move_import(argv, calendar_source, calendar_target, execution_timestamp):
+def events_move_import(argv, calendar_source, calendar_target, execution_timestamp, time_range=None, updated_min=None):
     service, flags = sample_tools.init(
         argv,
         "calendar",
@@ -183,7 +189,18 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
     events_counter_imported = events_counter_moved = events_counter_missing = events_counter_already = events_counter_reimported = events_counter_reimported_merged = 0
 
     while True:
-        events = service.events().list(calendarId=calendar_source, pageToken=page_token).execute()
+
+        # Filter time range to operate with the events
+        if time_range and updated_min:
+            events = service.events().list(calendarId=calendar_source, pageToken=page_token, timeMin=time_range[0], timeMax=time_range[1], updatedMin=updated_min).execute()
+        elif time_range and not updated_min:
+            events = service.events().list(calendarId=calendar_source, pageToken=page_token, timeMin=time_range[0], timeMax=time_range[1]).execute()
+        elif not time_range and updated_min:
+            # If I set `updatedMin`, I also have to set `showDeleted`=False
+            events = service.events().list(calendarId=calendar_source, pageToken=page_token, updatedMin=updated_min, showDeleted=False).execute()
+        else:
+            events = service.events().list(calendarId=calendar_source, pageToken=page_token).execute()
+
         for events_counter, event in enumerate(events['items']):
             operation_timestamp = datetime.utcnow().isoformat() + 'Z'
             events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'].isin(EVENTS))].sort_values(by='operation_timestamp', ascending=False).head(1)
@@ -276,7 +293,8 @@ if __name__ == "__main__":
     # calendar_list(sys.argv)
     events_backup(sys.argv, "events_backup_source_gw", personal.CALENDAR_SOURCE)
     events_backup(sys.argv, "events_backup_target_gw", personal.CALENDAR_TARGET)
-    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp)
+    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE)
+    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=UPDATED_MIN)
 
     pass
 
