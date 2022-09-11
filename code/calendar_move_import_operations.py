@@ -15,12 +15,12 @@ import re
 
 import personal
 
-EVENTS = ['moved', 'imported', 'reimported', 'reimported_merged']
+EVENTS_STORED = ['moved', 'imported', 'reimported', 'reimported_merged']
 PREVIOUS = 'PREVIOUS'
 DIFF = 'DIFF'
 MIN_FOR_FIRST_SEARCH = 200
 TIME_RANGE = ['2022-08-01T00:00:00Z', '2022-08-31T00:00:00Z']
-# UPDATED_MIN = '2022-09-10T00:00:00Z'
+UPDATED_MIN = '2022-09-11T14:36:36Z'
 
 def calendar_list(argv):
     # Authenticate and construct service.
@@ -91,7 +91,7 @@ def event_description_text_diff(old, new):
     diff = '\n'.join(list(diff))
     return diff
 
-def clean_previous(text, events=EVENTS, previous=PREVIOUS, diff=DIFF, min_for_first_search=MIN_FOR_FIRST_SEARCH):
+def clean_previous(text, events=EVENTS_STORED, previous=PREVIOUS, diff=DIFF, min_for_first_search=MIN_FOR_FIRST_SEARCH):
     for event_ in events:
         event_search = text.find(f"|{event_.upper()}|")
         event_search_end = text.find(f"|/{event_.upper()}|") + len(event_) + 3  # 3: |+/+|, three symbols
@@ -207,7 +207,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
         for _, event in enumerate(events['items']):
             events_counter_global += 1
             operation_timestamp = datetime.utcnow().isoformat() + 'Z'
-            events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'].isin(EVENTS))].sort_values(by='operation_timestamp', ascending=False).head(1)
+            events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'].isin(EVENTS_STORED))].sort_values(by='operation_timestamp', ascending=False).head(1)
             print(f"> Reading {event['id']}")
 
             if event['status'] == 'cancelled':
@@ -311,14 +311,11 @@ if __name__ == "__main__":
     execution_timestamp = datetime.utcnow().isoformat() + 'Z'
 
     # calendar_list(sys.argv)
-    events_backup(sys.argv, "events_backup_source_jbg", personal.CALENDAR_SOURCE)
-    events_backup(sys.argv, "events_backup_target_jb", personal.CALENDAR_TARGET)
+    # events_backup(sys.argv, "events_backup_source_jbg", personal.CALENDAR_SOURCE)
+    # events_backup(sys.argv, "events_backup_target_jb", personal.CALENDAR_TARGET)
     # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE, updated_min=UPDATED_MIN)
-    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=UPDATED_MIN)
+    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=UPDATED_MIN)
     # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE)
-    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp)
+    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp)
 
     pass
-
-# TODO: Los que dicen "|MOVED|", pero siguen en `source`, los tendría que insistir el mover, sin ponerle leyenda?
-# TODO: `Misa`, por algún motivo no se movió bien. Borrarla y hacerla otra vez desde `source`
