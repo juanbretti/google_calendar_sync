@@ -15,12 +15,17 @@ import re
 
 import personal
 
+# User control
+BACKUP_ENABLE = False
+UPDATED_MIN = '2022-09-11T16:00:00Z'
+UPDATED_MIN = '2022-09-12T07:49:49.055842Z'
+# TIME_RANGE = ['2022-08-01T00:00:00Z', '2022-08-31T00:00:00Z']
+
+# Constants
 EVENTS_STORED = ['moved', 'imported', 'reimported', 'reimported_merged']
 PREVIOUS = 'PREVIOUS'
 DIFF = 'DIFF'
 MIN_FOR_FIRST_SEARCH = 200
-TIME_RANGE = ['2022-08-01T00:00:00Z', '2022-08-31T00:00:00Z']
-UPDATED_MIN = '2022-09-11T14:36:36Z'
 
 def calendar_list(argv):
     # Authenticate and construct service.
@@ -78,6 +83,20 @@ def events_backup(argv, file_name, calendar, show_deleted=False):
     text_file.write(json.dumps(events_concatenate))
     text_file.close()
     print(f"Export complete of `{calendar}` on `{file_name_complete}`")
+
+def latest_run_updated_min(calendar_source, calendar_target, updated_min = UPDATED_MIN):
+    calendar_source_target_path = personal.PATH_DATA + "/" + calendar_source.split("@")[0] + "-" + calendar_target.split("@")[0] + ".csv"
+    try:
+        events_df = pd.read_csv(calendar_source_target_path)
+        latest_run_time = events_df['execution_timestamp'].max()
+    except:
+        latest_run_time = input("Type date as `2022-08-31T00:00:00Z`")
+        if latest_run_time == "":
+            latest_run_time = updated_min
+    
+    print(f"Updated min `{latest_run_time}`")
+
+    return latest_run_time
 
 def event_description_remove_html_tags(raw_html):
     raw_html = re.sub('<br\s*?>', os.linesep, raw_html)
@@ -309,13 +328,14 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
 
 if __name__ == "__main__":
     execution_timestamp = datetime.utcnow().isoformat() + 'Z'
-
+    updated_min = latest_run_updated_min(personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET)
     # calendar_list(sys.argv)
-    # events_backup(sys.argv, "events_backup_source_jbg", personal.CALENDAR_SOURCE)
-    # events_backup(sys.argv, "events_backup_target_jb", personal.CALENDAR_TARGET)
-    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE, updated_min=UPDATED_MIN)
-    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=UPDATED_MIN)
+    if BACKUP_ENABLE:
+        events_backup(sys.argv, "events_backup_source_jbg", personal.CALENDAR_SOURCE)
+        events_backup(sys.argv, "events_backup_target_jb", personal.CALENDAR_TARGET)
+    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=updated_min)  # Only after a specific time
+    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE, updated_min=UPDATED_MIN)  # Range of time to search for new updated events
     # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE)
-    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp)
+    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp)  # All import
 
     pass
