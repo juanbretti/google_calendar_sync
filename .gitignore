@@ -1,7 +1,7 @@
 *.csv
 *.json
 *.dat
-code/personal.py
+code/confidential.py
 .vscode/
 .history/
 data/

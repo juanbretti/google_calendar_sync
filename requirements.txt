@@ -1,0 +1,4 @@
+pandas
+google-api-python-client
+beautifulsoup4
+oauth2client

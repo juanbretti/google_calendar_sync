@@ -13,11 +13,11 @@ import difflib
 import os
 import re
 
-import personal
+import confidential
 
 # User control
 BACKUP_ENABLE = False
-UPDATED_MIN = '2022-09-11T16:00:00Z'
+# UPDATED_MIN = '2022-09-11T16:00:00Z'
 UPDATED_MIN = '2022-09-12T07:49:49.055842Z'
 # TIME_RANGE = ['2022-08-01T00:00:00Z', '2022-08-31T00:00:00Z']
 
@@ -66,7 +66,7 @@ def events_backup(argv, file_name, calendar, show_deleted=False):
     )
 
     page_token = None
-    file_name_complete = personal.PATH_DATA + "/" + file_name + "_" + datetime.utcnow().strftime("%Y%m%dT%H%M%SZ") + ".json"
+    file_name_complete = confidential.PATH_DATA + "/" + file_name + "_" + datetime.utcnow().strftime("%Y%m%dT%H%M%SZ") + ".json"
     text_file = open(file_name_complete, mode="w", encoding="utf-8")
     events_concatenate = {}
     events_counter = 0
@@ -85,7 +85,7 @@ def events_backup(argv, file_name, calendar, show_deleted=False):
     print(f"Export complete of `{calendar}` on `{file_name_complete}`")
 
 def latest_run_updated_min(calendar_source, calendar_target, updated_min = UPDATED_MIN):
-    calendar_source_target_path = personal.PATH_DATA + "/" + calendar_source.split("@")[0] + "-" + calendar_target.split("@")[0] + ".csv"
+    calendar_source_target_path = confidential.PATH_DATA + "/" + calendar_source.split("@")[0] + "-" + calendar_target.split("@")[0] + ".csv"
     try:
         events_df = pd.read_csv(calendar_source_target_path)
         latest_run_time = events_df['execution_timestamp'].max()
@@ -167,7 +167,7 @@ def event_description_update(event, custom_flag, calendar_source, calendar_targe
 
     return watermark_s
 
-def event_attendees_update(event, calendar_target, calendar_target_name=personal.CALENDAR_TARGET_NAME):
+def event_attendees_update(event, calendar_target, calendar_target_name=confidential.CALENDAR_TARGET_NAME):
     # Add `attendee` to be able to import
     self_attendee = {"email": calendar_target, "displayName": calendar_target_name, "self": True, "responseStatus": "accepted"}
     if 'attendees' in event:
@@ -198,7 +198,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
         scope = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"],
     )
     
-    calendar_source_target_path = personal.PATH_DATA + "/" + calendar_source.split("@")[0] + "-" + calendar_target.split("@")[0] + ".csv"
+    calendar_source_target_path = confidential.PATH_DATA + "/" + calendar_source.split("@")[0] + "-" + calendar_target.split("@")[0] + ".csv"
     try:
         events_df = pd.read_csv(calendar_source_target_path)
         print('Reading `csv`')
@@ -219,7 +219,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
             events = service.events().list(calendarId=calendar_source, pageToken=page_token, timeMin=time_range[0], timeMax=time_range[1]).execute()
         elif not time_range and updated_min:
             # If I set `updatedMin`, I also have to set `showDeleted`=False
-            events = service.events().list(calendarId=calendar_source, pageToken=page_token, updatedMin=updated_min, showDeleted=False).execute()
+            events = service.events().list(calendarId=calendar_source, pageToken=page_token, updatedMin=updated_min, showDeleted=True).execute()
         else:
             events = service.events().list(calendarId=calendar_source, pageToken=page_token).execute()
 
@@ -231,6 +231,7 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
 
             if event['status'] == 'cancelled':
                     event_type = 'cancelled'
+                    # Just getting warned about the `cancelled` event. No action is taking place.
                     # Log
                     event_log, events_counter_cancelled, _ = event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter_cancelled, events_counter_global)
             
@@ -323,19 +324,20 @@ def events_move_import(argv, calendar_source, calendar_target, execution_timesta
     # Write log
     events_df.to_csv(calendar_source_target_path, index=False)
 
-    print(f"Copy complete from `{calendar_source}` to `{calendar_target}`")
+    print(f"Synchronization complete from `{calendar_source}` to `{calendar_target}`")
     print(f"events_counter_global {events_counter_global}, moved {events_counter_moved}, imported {events_counter_imported}, reimported {events_counter_reimported}, reimported_merged {events_counter_reimported_merged}, missing {events_counter_missing}, imported_sequence_error {events_counter_imported_sequence_error}, cancelled {events_counter_cancelled}, already {events_counter_already}")
 
 if __name__ == "__main__":
     execution_timestamp = datetime.utcnow().isoformat() + 'Z'
-    updated_min = latest_run_updated_min(personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET)
+
+    updated_min = latest_run_updated_min(confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET)
     # calendar_list(sys.argv)
     if BACKUP_ENABLE:
-        events_backup(sys.argv, "events_backup_source_jbg", personal.CALENDAR_SOURCE)
-        events_backup(sys.argv, "events_backup_target_jb", personal.CALENDAR_TARGET)
-    events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, updated_min=updated_min)  # Only after a specific time
-    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE, updated_min=UPDATED_MIN)  # Range of time to search for new updated events
-    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE)
-    # events_move_import(sys.argv, personal.CALENDAR_SOURCE, personal.CALENDAR_TARGET, execution_timestamp)  # All import
+        events_backup(sys.argv, "events_backup_source_jbg", confidential.CALENDAR_SOURCE)
+        events_backup(sys.argv, "events_backup_target_jb", confidential.CALENDAR_TARGET)
+    events_move_import(sys.argv, confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET, execution_timestamp, updated_min=updated_min)  # Only after a specific time
+    # events_move_import(sys.argv, confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE, updated_min=UPDATED_MIN)  # Range of time to search for new updated events
+    # events_move_import(sys.argv, confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET, execution_timestamp, time_range=TIME_RANGE)
+    # events_move_import(sys.argv, confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET, execution_timestamp)  # All import
 
     pass
