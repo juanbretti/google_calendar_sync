@@ -13,11 +13,7 @@ import event_operations
 def events_move_import(service, calendar_source, calendar_target, execution_timestamp, time_range=None, updated_min=None):
     # Read and create `events_df`
     events_df, events_df_path, events_df_execution_path = operations_additional.read_events_df(calendar_source, calendar_target)
-    if events_df.shape[0] == 0:
-        events_df['inserted_target'] = events_df['id_source'] = events_df['operation_timestamp'] = events_df['updated_source'] = None
-        if constants.LOG_PRINT:
-            print('Creating `csv`')
-    
+
     # Initialization
     page_token = None
     events_df_execution = pd.DataFrame()

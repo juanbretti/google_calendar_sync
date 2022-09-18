@@ -16,8 +16,12 @@ if __name__ == "__main__":
         operations_additional.events_backup(sys.argv, "events_backup_source_jbg", confidential.CALENDAR_SOURCE)
         operations_additional.events_backup(sys.argv, "events_backup_target_jb", confidential.CALENDAR_TARGET)
 
-    # Environment    
+    # Environment
     execution_timestamp = datetime.utcnow().isoformat() + 'Z'
+    if constants.LOG_PRINT:
+        print(f">>> execution_timestamp: `{execution_timestamp}` <<<")
+
+    # Environment
     updated_min = operations_additional.latest_run_updated_min(confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET)
     service = operations_additional.google_api_service(sys.argv, ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"])
 
@@ -30,5 +34,3 @@ if __name__ == "__main__":
     # Send email
     if constants.EMAIL_ENABLE and events_df_execution.shape[0]>0:
         email_operations.send_email(events_df, events_df_execution, events_counter, confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET, execution_timestamp, updated_min=updated_min)
-
-    pass
