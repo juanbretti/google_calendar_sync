@@ -71,8 +71,8 @@ def read_events_df(calendar_source, calendar_target):
         events_df = pd.read_csv(events_df_path)
         if constants.LOG_PRINT:
             print('Reading `csv`')
-    except:
-        events_df['inserted_target'] = events_df['id_source'] = events_df['operation_timestamp'] = events_df['updated_source'] = None
+    except: 
+        events_df = pd.DataFrame(columns=['inserted_target', 'id_source', 'operation_timestamp', 'updated_source'])
         if constants.LOG_PRINT:
             print('Creating `csv`')
 
