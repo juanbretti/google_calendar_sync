@@ -13,7 +13,7 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-def send_email(events_df, events_df_execution, events_counter, calendar_source, calendar_target, execution_timestamp, time_range=None, updated_min=None):
+def send_email(events_df_execution, events_counter, calendar_source, calendar_target, execution_timestamp, time_range=None, updated_min=None):
     message = MIMEMultipart("alternative")
     message["Subject"] = "Google Calendar Sync summary"
     message["From"] = f'Python App <{confidential.SMTP_USERNAME}>'
@@ -40,7 +40,9 @@ def send_email(events_df, events_df_execution, events_counter, calendar_source, 
         html = html + f"<br><b>updated_min</b>: {updated_min}"
     
     html = html + "<br><br><h1>Counters</h1>"
-    html = html + '<br> '.join(f'<b>{k}</b>: {v}' for k, v in events_counter.items())
+    for k, v in events_counter.items():
+        if v > 0:
+            html = html + f'<br><b>{k}</b>: {v}'
     html = html + "<br><br><h1>Events</h1>"
     html = html + """<table>
         <tr>
@@ -51,17 +53,6 @@ def send_email(events_df, events_df_execution, events_counter, calendar_source, 
         </tr>"""
 
     for index, row in events_df_execution.iterrows():
-
-        # To add information after the `cancelled` events. More likely, are events that were previously `moved`.
-        if row['inserted_target'] == 'cancelled':
-            if updated_min is not None:
-                events_df_filtered = events_df[(events_df['id_source'] == row['id_source']) & (events_df['inserted_target'] == 'moved') & (events_df['operation_timestamp'] <= updated_min)]
-            else:
-                events_df_filtered = events_df[(events_df['id_source'] == row['id_source']) & (events_df['inserted_target'] == 'moved')]
-
-            if events_df_filtered.shape[0]>0:
-                row['inserted_target'] = 'cancelled, previously moved'
-                row['summary_source'] = events_df_filtered['summary_source'].iloc[-1]  # I get the `summary` from the previous `moved` operation
 
         html = html + f"""
             <tr>

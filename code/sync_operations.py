@@ -26,6 +26,7 @@ def events_move_import(service, calendar_source, calendar_target, execution_time
         'missing': 0, 
         'imported_sequence_error': 0,
         'cancelled': 0,
+        'cancelled_previously_moved': 0,
         'already': 0,
         }
 
@@ -52,10 +53,22 @@ def events_move_import(service, calendar_source, calendar_target, execution_time
             events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'].isin(constants.EVENTS_STORED))].sort_values(by='operation_timestamp', ascending=False).head(1)
 
             if event['status'] == 'cancelled':
-                    event_type = 'cancelled'
-                    # Just getting warned about the `cancelled` event. No action is taking place.
-                    # Log
-                    event_log, events_counter, _ = operations_additional.event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter)
+                event_type = 'cancelled'
+                # Just getting warned about the `cancelled` event. No action is taking place.
+
+                # To add information after the `cancelled` events. More likely, are events that were previously `moved`.
+                if updated_min is not None:
+                    events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'] == 'moved') & (events_df['operation_timestamp'] <= updated_min)]
+                else:
+                    events_df_filtered = events_df[(events_df['id_source'] == event['id']) & (events_df['inserted_target'] == 'moved')]
+
+                if events_df_filtered.shape[0]>0:
+                    event_type = 'cancelled_previously_moved'
+                    if 'summary' not in event:
+                        event['summary'] = events_df_filtered['summary_source'].iloc[-1]  # I get the `summary` from the previous `moved` operation
+
+                # Log
+                event_log, events_counter, _ = operations_additional.event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter)
             
             elif events_df_filtered.shape[0] == 0:
                 # Strange events missing `summary` or `start`
@@ -124,9 +137,7 @@ def events_move_import(service, calendar_source, calendar_target, execution_time
                     event_add = service.events().import_(calendarId=calendar_target, body=event).execute()
 
                 # Log
-                if event_type == 'reimported':
-                    event_log, events_counter, _ = operations_additional.event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter, event_target_updated=event_target['updated'])
-                elif event_type == 'reimported_merged':
+                if event_type in ['reimported', 'reimported_merged']:
                     event_log, events_counter, _ = operations_additional.event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter, event_target_updated=event_target['updated'])
                 elif event_type == 'already':
                     event_log, events_counter, _ = operations_additional.event_df_log(calendar_source, event, calendar_target, operation_timestamp, event_type, execution_timestamp, events_counter)
