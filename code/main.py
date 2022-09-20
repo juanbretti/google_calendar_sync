@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
+import datetime
+from zoneinfo import ZoneInfo
 import sys
 
 import confidential
@@ -12,9 +13,11 @@ import email_operations
 
 if __name__ == "__main__":
     # Environment
-    execution_timestamp = datetime.utcnow().isoformat() + 'Z'
+    execution_timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
+
     if constants.LOG_PRINT:
-        print(f">>> execution_timestamp: `{execution_timestamp}` <<<")
+        execution_timestamp_formatted = datetime.datetime.fromisoformat(execution_timestamp[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+        print(f">>> execution_timestamp_formated: `{execution_timestamp_formatted}` <<<")
 
     # Backup
     if constants.BACKUP_ENABLE:
@@ -34,3 +37,4 @@ if __name__ == "__main__":
     # Send email
     if constants.EMAIL_ENABLE and events_df_execution.shape[0]>0:
         email_operations.send_email(events_df_execution, events_counter, confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET, execution_timestamp, updated_min=updated_min)
+

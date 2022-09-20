@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
+import datetime
 import pandas as pd
 import json
 import os
@@ -46,7 +46,7 @@ def events_move_import(service, calendar_source, calendar_target, execution_time
         # Iterate the 250 events in the page
         for event in events['items']:
             events_counter['global'] += 1
-            operation_timestamp = datetime.utcnow().isoformat() + 'Z'
+            operation_timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
             if constants.LOG_PRINT:
                 print(f"> Reading {event['id']}")
 

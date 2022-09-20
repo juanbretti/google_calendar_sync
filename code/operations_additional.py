@@ -3,7 +3,8 @@
 
 from oauth2client import client
 from googleapiclient import sample_tools
-from datetime import datetime
+import datetime
+from zoneinfo import ZoneInfo
 import json
 import pandas as pd
 
@@ -44,7 +45,7 @@ def events_backup(argv, file_name, calendar, show_deleted=False):
     service = google_api_service(argv, "https://www.googleapis.com/auth/calendar.readonly")
 
     page_token = None
-    file_name_complete = confidential.PATH_DATA + "/" + file_name + "_" + datetime.utcnow().strftime("%Y%m%dT%H%M%SZ") + ".json"
+    file_name_complete = confidential.PATH_DATA + "/" + file_name + "_" + datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ") + ".json"
     text_file = open(file_name_complete, mode="w", encoding="utf-8")
     events_concatenate = {}
     events_counter = 0
@@ -88,7 +89,8 @@ def latest_run_updated_min(calendar_source, calendar_target, updated_min = const
             latest_run_time = updated_min
     
     if constants.LOG_PRINT:
-        print(f"Updated min `{latest_run_time}`")
+        latest_run_time_formatted = datetime.datetime.fromisoformat(latest_run_time[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+        print(f"Updated min `{latest_run_time_formatted}`")
 
     return latest_run_time
 

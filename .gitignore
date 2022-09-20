@@ -5,6 +5,6 @@ code/confidential.py
 .vscode/
 .history/
 data/
-backup/
 test/
+backup/
 **/__pycache__

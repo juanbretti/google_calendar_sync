@@ -3,8 +3,8 @@
 
 # https://realpython.com/python-send-email/#sending-fancy-emails
 
-from datetime import datetime
-import pandas as pd
+import datetime
+from zoneinfo import ZoneInfo
 
 import confidential
 import constants
@@ -33,17 +33,19 @@ def send_email(events_df_execution, events_counter, calendar_source, calendar_ta
         </head>
         <body>"""
     html = html + "<h1>Summary</h1>"
-    html = html + f"<b>calendar_source</b>: {calendar_source}<br><b>calendar_target</b>: {calendar_target}<br><b>execution_timestamp</b>: {execution_timestamp}"
+    execution_timestamp_formatted = datetime.datetime.fromisoformat(execution_timestamp[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+    html = html + f"<b>calendar_source</b>: {calendar_source}<br><b>calendar_target</b>: {calendar_target}<br><b>execution_timestamp_formatted</b>: {execution_timestamp_formatted}"
     if time_range is not None:
         html = html + f"<br><b>time_range</b>: {time_range}"
     if updated_min is not None:
-        html = html + f"<br><b>updated_min</b>: {updated_min}"
+        updated_min_formatted = datetime.datetime.fromisoformat(updated_min[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+        html = html + f"<br><b>updated_min_formatted</b>: {updated_min_formatted}"
     
     html = html + "<br><br><h1>Counters</h1>"
     for k, v in events_counter.items():
         if v > 0:
-            html = html + f'<br><b>{k}</b>: {v}'
-    html = html + "<br><br><h1>Events</h1>"
+            html = html + f'<b>{k}</b>: {v}<br>'
+    html = html + "<br><h1>Events</h1>"
     html = html + """<table>
         <tr>
             <td><b>id_source</b></td>
