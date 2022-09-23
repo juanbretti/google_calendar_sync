@@ -1,9 +1,10 @@
 # google_calendar_sync
 Sync two **Google Calendar** using the *API* and *Python*.
 
-I had created this *Python* app, because when you import event, guests and conference data for that event are not imported ([Reference](https://support.google.com/calendar/answer/37118)). This will create `\code\client_secrets.json`.
+I had created this *Python* app, because when you import event, guests and conference data for that event are not imported ([Reference](https://support.google.com/calendar/answer/37118)).
 
-Additionally create a file `\code\confidential.py`, containing:
+To use this application, you need to create:
+A file `\code\confidential.py`, containing:
 ```python
 CALENDAR_SOURCE = 'user_a@gmail.com'
 CALENDAR_TARGET = 'user_a@your_domain.com'
@@ -19,11 +20,11 @@ RECEIVER_NAME = CALENDAR_TARGET_NAME
 RECEIVER_MAIL = 'user_a+google_calendar_sync@your_domain.com'
 ```
 
-Also a folder for the outputs to be stored at `\data\`.
+A folder for the outputs to be stored at `\data`.
 
 Two personal files are required to authenticate to *Google*:
-1. `\code\client_secrets.json`
-2. `\calendar.dat`
+1. `\code\client_secrets.json`. Bellow a tutorial.
+2. `\calendar.dat`. This is automatically created after the first execution of the application.
 
 Two ways to execute:
 1. Run `main.py`. Recommended.
@@ -31,7 +32,7 @@ Two ways to execute:
 
 ## Create Google Calendar API private keys
 To start syncing with Google Calendar, you’ll need to collect the Client ID and Client Secret from your Google API.\
-Follow this [tutorial](https://simplyscheduleappointments.com/guides/google-api-credentials/).
+Follow this [tutorial](https://simplyscheduleappointments.com/guides/google-api-credentials/). This will create `\code\client_secrets.json`.
 
 # References
 ### Google Calendar API

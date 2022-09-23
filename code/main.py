@@ -37,4 +37,3 @@ if __name__ == "__main__":
     # Send email
     if constants.EMAIL_ENABLE and events_df_execution.shape[0]>0:
         email_operations.send_email(events_df_execution, events_counter, confidential.CALENDAR_SOURCE, confidential.CALENDAR_TARGET, execution_timestamp, updated_min=updated_min)
-
