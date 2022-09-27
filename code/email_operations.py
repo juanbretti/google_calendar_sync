@@ -33,12 +33,12 @@ def send_email(events_df_execution, events_counter, calendar_source, calendar_ta
         </head>
         <body>"""
     html = html + "<h1>Summary</h1>"
-    execution_timestamp_formatted = datetime.datetime.fromisoformat(execution_timestamp[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+    execution_timestamp_formatted = datetime.datetime.fromisoformat(execution_timestamp[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).strftime(constants.DATE_FORMAT)
     html = html + f"<b>calendar_source</b>: {calendar_source}<br><b>calendar_target</b>: {calendar_target}<br><b>execution_timestamp_formatted</b>: {execution_timestamp_formatted}"
     if time_range is not None:
         html = html + f"<br><b>time_range</b>: {time_range}"
     if updated_min is not None:
-        updated_min_formatted = datetime.datetime.fromisoformat(updated_min[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+        updated_min_formatted = datetime.datetime.fromisoformat(updated_min[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).strftime(constants.DATE_FORMAT)
         html = html + f"<br><b>updated_min_formatted</b>: {updated_min_formatted}"
     
     html = html + "<br><br><h1>Counters</h1>"

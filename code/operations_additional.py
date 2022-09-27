@@ -89,7 +89,7 @@ def latest_run_updated_min(calendar_source, calendar_target, updated_min = const
             latest_run_time = updated_min
     
     if constants.LOG_PRINT:
-        latest_run_time_formatted = datetime.datetime.fromisoformat(latest_run_time[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+        latest_run_time_formatted = datetime.datetime.fromisoformat(latest_run_time[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).strftime(constants.DATE_FORMAT)
         print(f"Updated min `{latest_run_time_formatted}`")
 
     return latest_run_time

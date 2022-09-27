@@ -16,7 +16,7 @@ if __name__ == "__main__":
     execution_timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
 
     if constants.LOG_PRINT:
-        execution_timestamp_formatted = datetime.datetime.fromisoformat(execution_timestamp[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).isoformat()
+        execution_timestamp_formatted = datetime.datetime.fromisoformat(execution_timestamp[:-1]).astimezone(ZoneInfo(constants.TIME_ZONE)).strftime(constants.DATE_FORMAT)
         print(f">>> execution_timestamp_formated: `{execution_timestamp_formatted}` <<<")
 
     # Backup
