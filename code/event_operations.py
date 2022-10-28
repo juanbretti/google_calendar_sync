@@ -78,12 +78,22 @@ def event_description_update(event, custom_flag, calendar_source, calendar_targe
 
     return watermark_s
 
-def event_attendees_update(event, calendar_target, calendar_target_name=confidential.CALENDAR_TARGET_NAME):
+def event_attendees_update(event, calendar_target, calendar_source=confidential.CALENDAR_SOURCE, calendar_target_name=confidential.CALENDAR_TARGET_NAME):
     # Add `attendee` to be able to import
-    self_attendee = {"email": calendar_target, "displayName": calendar_target_name, "self": True, "responseStatus": "accepted"}
     if 'attendees' in event:
+
+        # Copy the status from the source calendar
+        response_status = 'accepted'  # Default value
+        for attendee in event['attendees']:
+            if set(['email', 'responseStatus']).issubset(attendee):
+                if attendee['email'] == calendar_source:
+                    response_status = attendee['responseStatus']
+
+        self_attendee = {"email": calendar_target, "displayName": calendar_target_name, "self": True, "responseStatus": response_status}
         event['attendees'].append(self_attendee)
+        
     else:
+        self_attendee = {"email": calendar_target, "displayName": calendar_target_name, "self": True, "responseStatus": "accepted"}
         event['attendees'] = [self_attendee]
     
     return event['attendees']
